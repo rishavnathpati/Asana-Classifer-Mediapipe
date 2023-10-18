@@ -1,63 +1,51 @@
 import os
 import numpy as np
-import cv2
 from tensorflow.keras.utils import to_categorical
 from keras.layers import Input, Dense
 from keras.models import Model
+from sklearn.model_selection import train_test_split
 
-is_init = False
-size = -1
+def load_data():
+    X, y, labels = [], [], []
+    dictionary = {}
+    for idx, file in enumerate(os.listdir()):
+        name, ext = os.path.splitext(file)
+        if ext == ".npy" and name != "labels":
+            data = np.load(file)
+            X.append(data)
+            y.append(np.full(data.shape[0], idx))
+            labels.append(name)
+            dictionary[name] = idx
+    X = np.concatenate(X)
+    y = to_categorical(np.concatenate(y))
+    return X, y, labels, dictionary
 
-label = []
-dictionary = {}
-c = 0
+def shuffle_data(X, y):
+    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.0)
+    return X_train, y_train
 
-for i in os.listdir():
-    if i.split(".")[-1] == "npy" and not (i.split(".")[0] == "labels"):
-        if not is_init:
-            is_init = True
-            X = np.load(i)
-            size = X.shape[0]
-            y = np.array([i.split('.')[0]] * size).reshape(-1, 1)
-        else:
-            X = np.concatenate((X, np.load(i)))
-            y = np.concatenate((y, np.array([i.split('.')[0]] * size).reshape(-1, 1)))
+def create_model(input_shape, output_shape):
+    ip = Input(shape=input_shape)
+    m = Dense(128, activation="tanh")(ip)
+    m = Dense(64, activation="tanh")(m)
+    op = Dense(output_shape, activation="softmax")(m)
+    model = Model(inputs=ip, outputs=op)
+    model.compile(optimizer='rmsprop', loss="categorical_crossentropy", metrics=['acc'])
+    return model
 
-        label.append(i.split('.')[0])
-        dictionary[i.split('.')[0]] = c
-        c = c + 1
+def train_model(model, X, y):
+    model.fit(X, y, epochs=80)
+    model.save("model.h5")
 
-y = np.array(y, dtype="int32")
+def save_labels(labels):
+    np.save("labels.npy", np.array(labels))
 
-for i in range(y.shape[0]):
-    y[i, 0] = dictionary[y[i, 0]]
+def main():
+    X, y, labels, dictionary = load_data()
+    X, y = shuffle_data(X, y)
+    model = create_model(X.shape[1], y.shape[1])
+    train_model(model, X, y)
+    save_labels(labels)
 
-y = to_categorical(y)
-
-X_new = X.copy()
-y_new = y.copy()
-counter = 0
-
-cnt = np.arange(X.shape[0])
-np.random.shuffle(cnt)
-
-for i in cnt:
-    X_new[counter] = X[i]
-    y_new[counter] = y[i]
-    counter = counter + 1
-
-ip = Input(shape=(X.shape[1]))
-
-m = Dense(128, activation="tanh")(ip)
-m = Dense(64, activation="tanh")(m)
-
-op = Dense(y.shape[1], activation="softmax")(m)
-
-model = Model(inputs=ip, outputs=op)
-
-model.compile(optimizer='rmsprop', loss="categorical_crossentropy", metrics=['acc'])
-
-model.fit(X_new, y_new, epochs=80)
-
-model.save("model.h5")
-np.save("labels.npy", np.array(label))
+if __name__ == "__main__":
+    main()
