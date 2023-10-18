@@ -4,6 +4,7 @@ from tensorflow.keras.utils import to_categorical
 from keras.layers import Input, Dense
 from keras.models import Model
 from sklearn.model_selection import train_test_split
+from config import DATA_DIRECTORY, MODEL_PATH, LABELS_PATH, EPOCHS
 
 
 def load_data():

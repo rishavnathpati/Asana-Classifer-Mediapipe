@@ -6,6 +6,7 @@ It uses the Mediapipe pose detection library to detect the human body pose and s
 import mediapipe as mp
 import numpy as np
 import cv2
+from config import DATA_DIRECTORY
 
 
 def inFrame(lst):

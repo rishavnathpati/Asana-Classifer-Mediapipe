@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import mediapipe as mp
 from keras.models import load_model
+from config import MODEL_PATH, LABELS_PATH, WEBCAM_INDEX
 
 
 def inFrame(lst):
