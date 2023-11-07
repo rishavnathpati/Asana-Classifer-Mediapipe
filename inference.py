@@ -1,126 +1,69 @@
-"""
-This script is used to make predictions on live webcam feed.
-It uses the trained model to predict the yoga pose being performed.
-"""
-
-import cv2
-import numpy as np
-import mediapipe as mp
-from keras.models import load_model
-from config import MODEL_PATH, LABELS_PATH, WEBCAM_INDEX
+import cv2 
+import numpy as np 
+import mediapipe as mp 
+from keras.models import load_model 
 
 
 def inFrame(lst):
-    """
-    Check if all the required landmarks are in the frame.
+	if lst[28].visibility > 0.6 and lst[27].visibility > 0.6 and lst[15].visibility>0.6 and lst[16].visibility>0.6:
+		return True 
+	return False
 
-    Parameters:
-    lst (list): List of landmarks.
-
-    Returns:
-    bool: True if all landmarks are in the frame, False otherwise.
-    """
-    return all(
-        landmark.visibility > 0.6 for landmark in [lst[28], lst[27], lst[15], lst[16]]
-    )
+model  = load_model("model.h5")
+label = np.load("labels.npy")
 
 
-def load_model_and_labels():
-    """
-    Load the trained model and labels from disk.
 
-    Returns:
-    tuple: The trained model and the labels.
-    """
-    model = load_model("model.h5")
-    labels = np.load("labels.npy")
-    return model, labels
+holistic = mp.solutions.pose
+holis = holistic.Pose()
+drawing = mp.solutions.drawing_utils
+
+cap = cv2.VideoCapture(0)
 
 
-def predict_pose(model, labels, landmarks):
-    """
-    Predict the yoga pose from the landmarks using the trained model.
+while True:
+	lst = []
 
-    Parameters:
-    model (keras.Model): The trained model.
-    labels (numpy.ndarray): The labels.
-    landmarks (list): The landmarks.
+	_, frm = cap.read()
 
-    Returns:
-    tuple: The predicted label and the confidence score.
-    """
-    lst = [
-        (landmark.x - landmarks[0].x, landmark.y - landmarks[0].y)
-        for landmark in landmarks
-    ]
-    prediction = model.predict(np.array(lst).reshape(1, -1))
-    return labels[np.argmax(prediction)], prediction[0][np.argmax(prediction)]
+	window = np.zeros((940,940,3), dtype="uint8")
 
+	frm = cv2.flip(frm, 1)
 
-def main():
-    """
-    Main function to run the script.
-    It loads the model and labels, opens the webcam feed, and starts making predictions.
-    """
-    model, labels = load_model_and_labels()
-    holistic = mp.solutions.pose.Pose()
-    drawing = mp.solutions.drawing_utils
-    cap = cv2.VideoCapture(0)
+	res = holis.process(cv2.cvtColor(frm, cv2.COLOR_BGR2RGB))
 
-    while True:
-        _, frame = cap.read()
-        frame = cv2.flip(frame, 1)
-        results = holistic.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        frame = cv2.blur(frame, (4, 4))
+	frm = cv2.blur(frm, (4,4))
+	if res.pose_landmarks and inFrame(res.pose_landmarks.landmark):
+		for i in res.pose_landmarks.landmark:
+			lst.append(i.x - res.pose_landmarks.landmark[0].x)
+			lst.append(i.y - res.pose_landmarks.landmark[0].y)
 
-        if results.pose_landmarks and inFrame(results.pose_landmarks.landmark):
-            pred, confidence = predict_pose(
-                model, labels, results.pose_landmarks.landmark
-            )
-            if confidence > 0.75:
-                cv2.putText(
-                    frame, pred, (180, 180), cv2.FONT_ITALIC, 1.3, (0, 255, 0), 2
-                )
-            else:
-                cv2.putText(
-                    frame,
-                    "Asana is either wrong or not trained",
-                    (100, 180),
-                    cv2.FONT_ITALIC,
-                    1.8,
-                    (0, 0, 255),
-                    3,
-                )
-        else:
-            cv2.putText(
-                frame,
-                "Make Sure Full body visible",
-                (100, 450),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 0, 255),
-                3,
-            )
+		lst = np.array(lst).reshape(1,-1)
 
-        drawing.draw_landmarks(
-            frame,
-            results.pose_landmarks,
-            mp.solutions.pose.POSE_CONNECTIONS,
-            connection_drawing_spec=drawing.DrawingSpec(
-                color=(255, 255, 255), thickness=6
-            ),
-            landmark_drawing_spec=drawing.DrawingSpec(
-                color=(0, 0, 255), circle_radius=3, thickness=3
-            ),
-        )
+		p = model.predict(lst)
+		pred = label[np.argmax(p)]
 
-        cv2.imshow("window", frame)
+		if p[0][np.argmax(p)] > 0.75:
+			cv2.putText(window, pred , (180,180),cv2.FONT_ITALIC, 1.3, (0,255,0),2)
 
-        if cv2.waitKey(1) == 27:
-            cv2.destroyAllWindows()
-            cap.release()
-            break
+		else:
+			cv2.putText(window, "Asana is either wrong not trained" , (100,180),cv2.FONT_ITALIC, 1.8, (0,0,255),3)
+
+	else: 
+		cv2.putText(frm, "Make Sure Full body visible", (100,450), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255),3)
+
+		
+	drawing.draw_landmarks(frm, res.pose_landmarks, holistic.POSE_CONNECTIONS,
+							connection_drawing_spec=drawing.DrawingSpec(color=(255,255,255), thickness=6 ),
+							 landmark_drawing_spec=drawing.DrawingSpec(color=(0,0,255), circle_radius=3, thickness=3))
 
 
-if __name__ == "__main__":
-    main()
+	window[420:900, 170:810, :] = cv2.resize(frm, (640, 480))
+
+	cv2.imshow("window", window)
+
+	if cv2.waitKey(1) == 27:
+		cv2.destroyAllWindows()
+		cap.release()
+		break
+
