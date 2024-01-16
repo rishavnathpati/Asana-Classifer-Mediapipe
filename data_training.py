@@ -1,8 +1,7 @@
-import os  
+import os
 import numpy as np 
 import cv2 
-from tensorflow.keras.utils import to_categorical
-
+from keras.utils.np_utils import to_categorical
 from keras.layers import Input, Dense 
 from keras.models import Model
  
