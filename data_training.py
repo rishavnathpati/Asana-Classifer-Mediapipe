@@ -4,7 +4,10 @@ import cv2
 from keras.utils.np_utils import to_categorical
 from keras.layers import Input, Dense 
 from keras.models import Model
- 
+import config
+
+
+
 is_init = False
 size = -1
 
@@ -59,8 +62,7 @@ model = Model(inputs=ip, outputs=op)
 
 model.compile(optimizer='rmsprop', loss="categorical_crossentropy", metrics=['acc'])
 
-model.fit(X_new, y_new, epochs=80)
+model.fit(X_new, y_new, epochs=config.EPOCHS)
 
-
-model.save("model.h5")
-np.save("labels.npy", np.array(label))
+model.save(config.MODEL_PATH)
+np.save(config.LABELS_PATH, np.array(label))

@@ -2,15 +2,15 @@ import cv2
 import numpy as np 
 import mediapipe as mp 
 from keras.models import load_model 
-
+import config
 
 def inFrame(lst):
 	if lst[28].visibility > 0.6 and lst[27].visibility > 0.6 and lst[15].visibility>0.6 and lst[16].visibility>0.6:
 		return True 
 	return False
 
-model  = load_model("model.h5")
-label = np.load("labels.npy")
+model  = load_model(config.MODEL_PATH)
+label = np.load(config.LABELS_PATH)
 
 
 
@@ -18,7 +18,7 @@ holistic = mp.solutions.pose
 holis = holistic.Pose()
 drawing = mp.solutions.drawing_utils
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(config.WEBCAM_INDEX)
 
 
 while True:

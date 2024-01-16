@@ -1,6 +1,7 @@
 import mediapipe as mp
 import numpy as np
 import cv2
+import config
 
 # Constants
 VISIBILITY_THRESHOLD = 0.6
@@ -23,7 +24,7 @@ def extract_landmarks(landmarks):
 
 
 # Initialize camera
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(config.WEBCAM_INDEX)
 if not cap.isOpened():
     print("Error: Camera could not be opened.")
     exit()
@@ -74,5 +75,6 @@ cap.release()
 cv2.destroyAllWindows()
 
 # Save the collected data
-np.save(f"{name}.npy", np.array(X))
+np.save(f"{config.DATA_DIRECTORY}/{name}.npy", np.array(X))
+
 print(f"Data saved for {name}. Shape of the data: {np.array(X).shape}")
